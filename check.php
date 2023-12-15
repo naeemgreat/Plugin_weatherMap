@@ -31,7 +31,7 @@
             }
       }
       
-      $ini_file = $php_general['Loaded Configuration File'];
+      $ini_file = $php_general['Configuration File (php.ini) Path'];
       $extra_ini = php_ini_scanned_files();
       if($extra_ini != '')
       {     $extra_ini = "The following additional ini files were read: $extra_ini"; }
@@ -52,7 +52,7 @@
             else
             {
                   $gdstring="This PHP uses the system GD library, which MIGHT have alpha-blending bugs. Check that you have at least GD 2.0.34 installed, if you see problems with weathermap segfaulting.\n";
-		  $gdstring .= "You can test for this specific fault by running check-gdbug.php\n";
+		$gdstring .= "You can test for this specific fault by running check-gdbug.php\n";
             }
       }
       else
@@ -73,7 +73,7 @@
         print "";
 	print "PHP Functions\n-------------\n";
         print "Some parts of Weathermap need special support in your PHP\ninstallation to work.\n\n";
-	print wordwrap($gdstring)."\n";
+        print wordwrap($gdstring)."\n";
   }
   else
   {
@@ -83,11 +83,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
     <title>Weathermap Pre-Install Checker</title>
-    <style type="text/css">
-    body { font-family: 'Lucida Grande',Arial,sans-serif; font-size: 10pt; }
+    <style>
+    body { font-family: Lucida Grande,Arial,sans-serif; font-size: 10pt; }
     p {margin-bottom: 10px; margin-top: 10px;}
     table { margin: 20px;}
-    .critical { width: 400px; padding: 10px; background: #fee; border: 1px solid #f88; padding-left: 20px; background: left no-repeat url(images/exclamation.png); }
+    .critical { width: 400px; padding: 10px; background: #fee; border: 1px solid #f88; padding-left: 20px; background-image: left no-repeat url(images/exclamation.png); }
     .noncritical { width: 400px; padding: 10px; background: #ffe; border: 1px solid #fb8; }
     .ok { width: 400px; padding: 10px; background: #efe; border: 1px solid #8f8; }
     </style>
@@ -98,8 +98,8 @@
     
     <p>This page checks for some common problems with your PHP and server environment that may stop Weathermap or the Editor from working.</p>
 	<p>NOTE: You should run this script as a web page AND from the command-line, as the environment can be different in each.</p>
-      <h2>PHP Basics</h2><p>This is the PHP version that is responsible for</p><ul>
-      <li>The web-based editor</li><li>Building maps with Rebuild Now from Cacti</li></ul>
+      <h2>PHP Basics</h2><p>This is the PHP version that is responsible for<ul>
+      <li>The web-based editor<li>Building maps with Rebuild Now from Cacti</ul></p>
       <p>This is PHP Version <?php echo $php_version ?> running on "<?php echo $php_os ?>" with a memory_limit of '<?php echo $mem_allowed ?>'. <?php echo $mem_warning ?></p>
       <p>The php.ini file was <?php echo $ini_file ?></p>
       <p><?php echo $extra_ini ?></p>
@@ -127,7 +127,7 @@
                   'imagecreatefromgif' => array(FALSE,FALSE,'GIF input support for ICON and BACKGROUND','an optional part of the GD library and the "gd" PHP extension'),
                   'imagejpeg' => array(FALSE,FALSE,'JPEG output support','an optional part of the GD library and the "gd" PHP extension'),
                   'imagegif' => array(FALSE,FALSE,'GIF output support','an optional part of the GD library and the "gd" PHP extension'),
-		  # 'imagefilter' => array(FALSE, FALSE, 'colorizing icons','a special function of the PHP-supplied GD library ONLY (not the external GD library'.($gdbuiltin?'':' that you are using').')'),
+		  'imagefilter' => array(FALSE, FALSE, 'colorizing icons','a special function of the PHP-supplied GD library ONLY (not the external GD library'.($gdbuiltin?'':' that you are using').')'),
 		  'imagecopyresampled' => array(FALSE,FALSE,'Thumbnail creation in the Cacti plugin','an optional part of the GD library and the "gd" PHP extension'),
                   'imagettfbbox' => array(FALSE,FALSE,'TrueType font support','an optional part of the GD library and the "gd" PHP extension'),
                   'memory_get_usage' => array(FALSE,TRUE,'memory-usage debugging','not supported on all PHP versions and platforms')                 
@@ -192,7 +192,7 @@
 		else
 		{
 		    $wnotes = wordwrap($notes,50);
-			$lines = explode("\n",$wnotes);
+			$lines = split("\n",$wnotes);
 			$i=0;
 			foreach ($lines as $noteline)
 			{
@@ -216,7 +216,7 @@
     {
 	    if($environment=='web') 
 		{
-        print "<p>If these functions are not found, you may need to <ul><li>check that the 'extension=' line for that extension is uncommented in your php.ini file (then restart your webserver), or<li>install the extension, if it isn't installed already</ul>On Debian/Ubuntu systems, you may also need to use the php5enmod command to enable the extension.</p>";
+        print "<p>If these functions are not found, you may need to <ul><li>check that the 'extension=' line for that extension is uncommented in your php.ini file (then restart your webserver), or<li>install the extension, if it isn't installed already</ul>";
 		}
 		else
 		{
@@ -277,6 +277,3 @@
     return $val;
 }
 ?>
-</table>
-</body>
-</html>

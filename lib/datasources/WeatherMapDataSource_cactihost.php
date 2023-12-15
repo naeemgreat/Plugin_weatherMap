@@ -12,12 +12,12 @@ class WeatherMapDataSource_cactihost extends WeatherMapDataSource {
 			}
 			else
 			{
-				wm_debug('ReadData CactiHost: Cacti database library not found.\n');
+				debug('ReadData CactiHost: Cacti database library not found.\n');
 			}
 		}
 		else
 		{
-			wm_debug("ReadData CactiHost: Can only run from Cacti environment.\n");
+			debug("ReadData CactiHost: Can only run from Cacti environment.\n");
 		}
 
 		return(FALSE);
@@ -79,7 +79,7 @@ class WeatherMapDataSource_cactihost extends WeatherMapDataSource {
 			}
 		}
 
-		wm_debug ("CactiHost ReadData: Returning (".($data[IN]===NULL?'NULL':$data[IN]).",".($data[OUT]===NULL?'NULL':$data[OUT]).",$data_time)\n");
+		debug ("CactiHost ReadData: Returning (".($data[IN]===NULL?'NULL':$data[IN]).",".($data[OUT]===NULL?'NULL':$data[IN]).",$data_time)\n");
 
 		return( array($data[IN], $data[OUT], $data_time) );
 	}
@@ -87,3 +87,4 @@ class WeatherMapDataSource_cactihost extends WeatherMapDataSource {
 
 
 // vim:ts=4:sw=4:
+?>

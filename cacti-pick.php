@@ -9,8 +9,7 @@ $ignore_cacti=FALSE;
 
 $config['base_url'] = $cacti_url;
 
-@include_once 'editor-config.php';
-require_once 'lib/database.php';
+@include_once('editor-config.php');
 
 // check if the goalposts have moved
 if( is_dir($cacti_base) && file_exists($cacti_base."/include/global.php") )
@@ -37,19 +36,9 @@ else
 	$cacti_found = FALSE;
 }
 
+// print $config['base_url'];
+
 // ******************************************
-if (isset($_SESSION['cacti']['weathermap']['last_used_host_id'][0]) ) 
-	{
-	print "<b>Last Host Selected:</b><br>";
-	$last['id'] = array_reverse($_SESSION['cacti']['weathermap']['last_used_host_id']);
-	$last['name'] = array_reverse($_SESSION['cacti']['weathermap']['last_used_host_name']);
-	
-	foreach ($last['id'] as $key => $id)
-		{
-		list($name) = explode(" - ", $last['name'][$key], 2);
-		print "<a href=cacti-pick.php?host_id=".$id."&command=link_step1&overlib=1&aggregate=0>[".$name."]</a><br>";
-		}
-	} 
 
 function js_escape($str)
 {
@@ -65,21 +54,15 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step2')
 {
 	$dataid = intval($_REQUEST['dataid']);
 
-//	$SQL_graphid = sprintf("select graph_templates_item.local_graph_id, title_cache FROM graph_templates_item,graph_templates_graph,data_template_rrd where graph_templates_graph.local_graph_id = graph_templates_item.local_graph_id  and task_item_id=data_template_rrd.id and local_data_id=%d LIMIT 1;",$dataid);
+	$SQL_graphid = "select graph_templates_item.local_graph_id, title_cache FROM graph_templates_item,graph_templates_graph,data_template_rrd where graph_templates_graph.local_graph_id = graph_templates_item.local_graph_id  and task_item_id=data_template_rrd.id and local_data_id=$dataid LIMIT 1;";
 
-//	$link = mysql_connect($database_hostname,$database_username,$database_password)
-//		or die('Could not connect: ' . mysql_error());
-    $pdo = weathermap_get_pdo();
-//	mysql_selectdb($database_default,$link) or die('Could not select database: '.mysql_error());
+	$link = mysql_connect($database_hostname,$database_username,$database_password)
+		or die('Could not connect: ' . mysql_error());
+	mysql_selectdb($database_default,$link) or die('Could not select database: '.mysql_error());
 
-    $stmt = $pdo->prepare("select graph_templates_item.local_graph_id, title_cache FROM graph_templates_item,graph_templates_graph,data_template_rrd where graph_templates_graph.local_graph_id = graph_templates_item.local_graph_id  and task_item_id=data_template_rrd.id and local_data_id=? LIMIT 1;");
-    $stmt->execute(array($dataid));
-    $line = $stmt->fetch(PDO::FETCH_ASSOC);
-
-//	$result = mysql_query($SQL_graphid) or die('Query failed: ' . mysql_error());
-//	$line = mysql_fetch_array($result, MYSQL_ASSOC);
+	$result = mysql_query($SQL_graphid) or die('Query failed: ' . mysql_error());
+	$line = mysql_fetch_array($result, MYSQL_ASSOC);
 	$graphid = $line['local_graph_id'];
-	$hostid = $_REQUEST['host_id'];
 
 ?>
 <html>
@@ -110,16 +93,7 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step2')
 This window should disappear in a moment.
 </body>
 </html>
-	<?php
-	if ($hostid > 0 && !in_array($hostid, $_SESSION['cacti']['weathermap']['last_used_host_id'])) {
-		$_SESSION['cacti']['weathermap']['last_used_host_id'][] = $hostid;
-		$_SESSION['cacti']['weathermap']['last_used_host_name'][] = $line['title_cache'];
-
-		$_SESSION['cacti']['weathermap']['last_used_host_id'] = array_slice($_SESSION['cacti']['weathermap']['last_used_host_id'],
-			-5);
-		$_SESSION['cacti']['weathermap']['last_used_host_name'] = array_slice($_SESSION['cacti']['weathermap']['last_used_host_name'],
-			-5);
-	}
+<?php
 	// end of link step 2
 }
 
@@ -128,7 +102,7 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step1')
 ?>
 <html>
 <head>
-	<script type="text/javascript" src="vendor/jquery/dist/jquery.min.js"></script>
+	<script type="text/javascript" src="editor-resources/jquery-latest.pack.js"></script>
 	<script type="text/javascript">
 
 	function filterlist(previous)
@@ -144,7 +118,7 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step1')
 		if(filterstring!=previous)
 		{	
 				$('ul#dslist > li').hide();
-				$("ul#dslist > li:contains('" + filterstring + "')").show();
+				$('ul#dslist > li').contains(filterstring).show();
 		}
 	}
 
@@ -155,15 +129,15 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step1')
 		}).show();
 	});
 
-	function update_source_step1(dataid,datasource,host_id)
+	function update_source_step1(dataid,datasource)
 	{
 		var newlocation;
 		var fullpath;
 
-		var rra_path = <?php echo js_escape($config['rra_path']); ?>;
+		var rra_path = <?php echo js_escape($config['base_path']); ?>;
 
 		if (typeof window.opener == "object") {
-			fullpath = datasource.replace(/<path_rra>/, rra_path);
+			fullpath = datasource.replace(/<path_rra>/, rra_path + '/rra');
 			if(document.forms['mini'].aggregate.checked)
 			{
 				opener.document.forms["frmMain"].link_target.value = opener.document.forms["frmMain"].link_target.value  + " " + fullpath;
@@ -175,7 +149,7 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step1')
 		}
 		if(document.forms['mini'].overlib.checked)
 		{
-			newlocation = 'cacti-pick.php?command=link_step2&dataid=' + dataid + '&host_id=' + host_id;
+			newlocation = 'cacti-pick.php?command=link_step2&dataid=' + dataid;
 			self.location = newlocation;
 		}
 		else
@@ -209,34 +183,39 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='link_step1')
 	
 	</script>
 <style type="text/css">
-	body { font-family: sans-serif; font-size: 10pt; }
-	ul { list-style: none;  margin: 0; padding: 0; }
-	ul { border: 1px solid black; }
-	ul li.row0 { background: #ddd;}
-	ul li.row1 { background: #ccc;}
-	ul li { border-bottom: 1px solid #aaa; border-top: 1px solid #eee; padding: 2px;}
-	ul li a { text-decoration: none; color: black; }
+body { font-family: sans-serif; font-size: 10pt; }
+ul { list-style: none;  margin: 0; padding: 0; }
+ul { border: 1px solid black; }
+ul li.row0 { background: #ddd;}
+ul li.row1 { background: #ccc;}
+ul li { border-bottom: 1px solid #aaa; border-top: 1px solid #eee; padding: 2px;}
+ul li a { text-decoration: none; color: black; }
 </style>
 <title>Pick a data source</title>
 </head>
 <body>
 <?php
 
+	$SQL_picklist = "select data_local.host_id, data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id ";
 
-$host_id = -1;
-
-$overlib = true;
-$aggregate = false;
-
-$pdo = weathermap_get_pdo();
-
-if(isset($_REQUEST['aggregate'])) $aggregate = ( $_REQUEST['aggregate']==0 ? false : true);
-if(isset($_REQUEST['overlib'])) $overlib= ( $_REQUEST['overlib']==0 ? false : true);
-
-    $stmt = $pdo->prepare("select id,CONCAT_WS('',description,' (',hostname,')') as name from host order by description,hostname");
-    $stmt->execute();
-    $hosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-//	 $hosts = db_fetch_assoc("select id,CONCAT_WS('',description,' (',hostname,')') as name from host order by description,hostname");
+	$host_id = -1;
+	
+	$overlib = true;
+	$aggregate = false;
+	
+	if(isset($_REQUEST['aggregate'])) $aggregate = ( $_REQUEST['aggregate']==0 ? false : true);
+	if(isset($_REQUEST['overlib'])) $overlib= ( $_REQUEST['overlib']==0 ? false : true);
+	
+	
+	if(isset($_REQUEST['host_id']))
+	{
+		$host_id = intval($_REQUEST['host_id']);
+		if($host_id>=0) $SQL_picklist .= " and data_local.host_id=$host_id ";
+	}
+	
+	$SQL_picklist .= " order by name_cache;";
+	
+	 $hosts = db_fetch_assoc("select id,CONCAT_WS('',description,' (',hostname,')') as name from host order by description,hostname");
 ?>
 
 <h3>Pick a data source:</h3>
@@ -263,39 +242,18 @@ if(sizeof($hosts) > 0) {
 
 	print '</form><div class="listcontainer"><ul id="dslist">';
 
+	$queryrows = db_fetch_assoc($SQL_picklist);
 
-//$SQL_picklist = "select data_local.host_id, data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id ";
-
-if(isset($_REQUEST['host_id']))
-{
-    $host_id = intval($_REQUEST['host_id']);
-    if($host_id>=0) {
-        $stmt = $pdo->prepare("select data_local.host_id, data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id  and data_local.host_id=? order by name_cache;");
-        $stmt->execute(array($host_id));
-    }
-    else {
-        $stmt = $pdo->prepare("select data_local.host_id, data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id  order by name_cache;");
-        $stmt->execute();
-    }
-//        $SQL_picklist .= " and data_local.host_id=$host_id ";
-
-} else {
-    $stmt = $pdo->prepare("select data_local.host_id, data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id  order by name_cache;");
-    $stmt->execute();
-}
-
-
-
-	$queryrows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-//	$queryrows = db_fetch_assoc($SQL_picklist);
+	// print $SQL_picklist;
 
 	$i=0;
 	if( is_array($queryrows)  && sizeof($queryrows) > 0 )
 	{
 		foreach ($queryrows as $line) {
+			//while ($line = mysql_fetch_array($result, MYSQL_ASSOC)) {
 			echo "<li class=\"row".($i%2)."\">";
 			$key = $line['local_data_id']."','".$line['data_source_path'];
-			echo "<a href=\"#\" onclick=\"update_source_step1('$key','$host_id')\">". $line['name_cache'] . "</a>";
+			echo "<a href=\"#\" onclick=\"update_source_step1('$key')\">". $line['name_cache'] . "</a>";
 			echo "</li>\n";
 			
 			$i++;
@@ -305,6 +263,12 @@ if(isset($_REQUEST['host_id']))
 	{
 		print "<li>No results...</li>";
 	}
+
+	// Free resultset
+	//mysql_free_result($result);
+
+	// Closing connection
+	//mysql_close($link);
 
 ?>
 </ul>
@@ -317,26 +281,28 @@ if(isset($_REQUEST['host_id']))
 if(isset($_REQUEST['command']) && $_REQUEST["command"]=='node_step1')
 {
 	$host_id = -1;
-
-    $overlib = true;
-    $aggregate = false;
-
-    if(isset($_REQUEST['aggregate'])) $aggregate = ( $_REQUEST['aggregate']==0 ? false : true);
-    if(isset($_REQUEST['overlib'])) $overlib= ( $_REQUEST['overlib']==0 ? false : true);
-
-    $pdo = weathermap_get_pdo();
-
+	$SQL_picklist = "SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM (graph_local,graph_templates_graph) LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id ";
 	
-//	 $hosts = db_fetch_assoc("select id,CONCAT_WS('',description,' (',hostname,')') as name from host order by description,hostname");
-
-    $stmt = $pdo->prepare("select id,CONCAT_WS('',description,' (',hostname,')') as name from host order by description,hostname");
-    $stmt->execute();
-    $hosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+	$overlib = true;
+	$aggregate = false;
+	
+	if(isset($_REQUEST['aggregate'])) $aggregate = ( $_REQUEST['aggregate']==0 ? false : true);
+	if(isset($_REQUEST['overlib'])) $overlib= ( $_REQUEST['overlib']==0 ? false : true);
+	
+	
+	if(isset($_REQUEST['host_id']))
+	{
+		$host_id = intval($_REQUEST['host_id']);
+		if($host_id>=0) $SQL_picklist .= " and graph_local.host_id=$host_id ";
+	}
+	$SQL_picklist .= " order by title_cache";	
+	
+	 $hosts = db_fetch_assoc("select id,CONCAT_WS('',description,' (',hostname,')') as name from host order by description,hostname");	
 
 ?>
 <html>
 <head>
-<script type="text/javascript" src="vendor/jquery/dist/jquery.min.js"></script>
+<script type="text/javascript" src="editor-resources/jquery-latest.pack.js"></script>
 <script type="text/javascript">
 
 	function filterlist(previous)
@@ -411,17 +377,33 @@ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='node_step1')
 	}
 	</script>
 <style type="text/css">
-	body { font-family: sans-serif; font-size: 10pt; }
-	ul { list-style: none;  margin: 0; padding: 0; }
-	ul { border: 1px solid black; }
-	ul li.row0 { background: #ddd;}
-	ul li.row1 { background: #ccc;}
-	ul li { border-bottom: 1px solid #aaa; border-top: 1px solid #eee; padding: 2px;}
-	ul li a { text-decoration: none; color: black; }
+body { font-family: sans-serif; font-size: 10pt; }
+ul { list-style: none;  margin: 0; padding: 0; }
+ul { border: 1px solid black; }
+ul li.row0 { background: #ddd;}
+ul li.row1 { background: #ccc;}
+ul li { border-bottom: 1px solid #aaa; border-top: 1px solid #eee; padding: 2px;}
+ul li a { text-decoration: none; color: black; }
 </style>
 <title>Pick a graph</title>
 </head>
 <body>
+
+<?php
+
+#	print "Cacti is ".$config["cacti_version"];
+
+#	$SQL_picklist = "select data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template  left join data_input on data_input.id=data_template_data.data_input_id left join data_template on data_local.data_template_id=data_template.id where data_local.id=data_template_data.local_data_id order by name_cache;";
+#	$SQL_picklist = "select data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id order by name_cache;";
+
+	
+	
+	#$link = mysql_connect($database_hostname,$database_username,$database_password)
+	#  or die('Could not connect: ' . mysql_error());
+	#  mysql_selectdb($database_default,$link) or die('Could not select database: '.mysql_error());
+
+	#$result = mysql_query($SQL_picklist) or die('Query failed: ' . mysql_error());
+?>
 
 <h3>Pick a graph:</h3>
 
@@ -443,35 +425,19 @@ if(sizeof($hosts) > 0) {
 
 	print '<span class="filter" style="display: none;">Filter: <input id="filterstring" name="filterstring" size="20"> (case-sensitive)<br /></span>';
 	print '<input id="overlib" name="overlib" type="checkbox" value="yes" '.($overlib ? 'CHECKED' : '' ).'> <label for="overlib">Set both OVERLIBGRAPH and INFOURL.</label><br />';
+	// print '<input id="aggregate" name="aggregate" type="checkbox" value="yes" '.($aggregate ? 'CHECKED' : '' ).'> <label for="aggregate">Append TARGET to existing one (Aggregate)</label>';
 
 	print '</form><div class="listcontainer"><ul id="dslist">';
 
+	$queryrows = db_fetch_assoc($SQL_picklist);
 
-//$SQL_picklist = "SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM (graph_local,graph_templates_graph) LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id ";
-if(isset($_REQUEST['host_id']))
-{
-    $host_id = intval($_REQUEST['host_id']);
-    if($host_id>=0) {
-//        $SQL_picklist .= " and graph_local.host_id=$host_id ";
-        $stmt = $pdo->prepare("SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM (graph_local,graph_templates_graph) LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id  and graph_local.host_id=? order by title_cache");
-        $stmt->execute(array($host_id));
-    } else {
-        $stmt = $pdo->prepare("SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM (graph_local,graph_templates_graph) LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id order by title_cache");
-        $stmt->execute();
-    }
-} else {
-    $stmt = $pdo->prepare("SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM (graph_local,graph_templates_graph) LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id order by title_cache");
-    $stmt->execute();
-}
-//$SQL_picklist .= " order by title_cache";
-
-//	$queryrows = db_fetch_assoc($SQL_picklist);
-    $queryrows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+	// print $SQL_picklist;
 
 	$i=0;
 	if( is_array($queryrows) && sizeof($queryrows) > 0)
 	{
 		foreach ($queryrows as $line) {
+			//while ($line = mysql_fetch_array($result, MYSQL_ASSOC)) {
 			echo "<li class=\"row".($i%2)."\">";
 			$key = $line['local_graph_id'];
 			echo "<a href=\"#\" onclick=\"update_source_step1('$key')\">". $line['title_cache'] . "</a>";
@@ -484,6 +450,11 @@ if(isset($_REQUEST['host_id']))
 		print "No results...";
 	}
 
+	// Free resultset
+	//mysql_free_result($result);
+
+	// Closing connection
+	//mysql_close($link);
 ?>
 </ul>
 </body>

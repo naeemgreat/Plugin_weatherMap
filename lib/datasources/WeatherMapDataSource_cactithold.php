@@ -31,28 +31,18 @@ class WeatherMapDataSource_cactithold extends WeatherMapDataSource {
 		{   
 			if( !function_exists('db_fetch_row') )
 			{
-				wm_debug("ReadData CactiTHold: Cacti database library not found. [THOLD001]\n");
+				debug('ReadData CactiTHold: Cacti database library not found. [THOLD001]\n');
 				return(FALSE);
 			}
-
-$thold_present = false;
-
-                        if (function_exists("api_plugin_is_enabled")) {
-                                if (api_plugin_is_enabled('thold')) {
-                                        $thold_present = true;
-                                }
-                        }
-
-                        if ( isset($plugins) && in_array('thold',$plugins)) {
-                                $thold_present = true;
-                        }
-
-                        if ( !$thold_present) {
-                                wm_debug("ReadData CactiTHold: THold plugin not enabled. [THOLD002]\n");
-                        }
-
+			
+			if( !isset($plugins) || !in_array('thold',$plugins))
+			{
+				debug('ReadData CactiTHold: THold plugin not enabled. [THOLD002]\n');
+				return(FALSE);
+			}
+			
 			$sql = "show tables";
-			$result = db_fetch_assoc($sql);
+			$result = db_fetch_assoc($sql) or die (mysql_error());
 			$tables = array();
 			
 			foreach($result as $index => $arr) {
@@ -63,7 +53,7 @@ $thold_present = false;
 			
 			if( !in_array('thold_data', $tables) )
 			{
-				wm_debug('ReadData CactiTHold: thold_data database table not found. [THOLD003]\n');
+				debug('ReadData CactiTHold: thold_data database table not found. [THOLD003]\n');
 				return(FALSE);
 			}			
 			
@@ -71,7 +61,7 @@ $thold_present = false;
 		}
 		else
 		{
-			wm_debug("ReadData CactiTHold: Can only run from Cacti environment. [THOLD004]\n");
+			debug("ReadData CactiTHold: Can only run from Cacti environment. [THOLD004]\n");
 		}
 
 		return(FALSE);
@@ -139,7 +129,7 @@ $thold_present = false;
 			
 			if($type=='monitor')
 			{
-				wm_debug("CactiTHold ReadData: Getting cacti basic state for host $id\n");
+				debug("CactiTHold ReadData: Getting cacti basic state for host $id\n");
 				$SQL = "select * from host where id=$id";
 				
 				// 0=disabled
@@ -174,9 +164,9 @@ $thold_present = false;
 					$item->add_note("cacti_faildate",$result['status_fail_date']);
 					$item->add_note("cacti_recdate",$result['status_rec_date']);
 				}
-				wm_debug("CactiTHold ReadData: Basic state for host $id is $state/$statename\n");
+				debug("CactiTHold ReadData: Basic state for host $id is $state/$statename\n");
 				
-				wm_debug("CactiTHold ReadData: Checking threshold states for host $id\n");
+				debug("CactiTHold ReadData: Checking threshold states for host $id\n");
 				$numthresh = 0;
 				$numfailing = 0;
 				$SQL2 = "select rra_id, data_id, thold_alert from thold_data,data_local where thold_data.rra_id=data_local.id and data_local.host_id=$id and thold_enabled='on'";
@@ -190,21 +180,21 @@ $thold_present = false;
 						$numthresh++;
 						if(intval($th['thold_alert']) > 0) 
 						{
-							wm_debug("CactiTHold ReadData: Seen threshold $desc failing ($v)for host $id\n");
+							debug("CactiTHold ReadData: Seen threshold $desc failing ($v)for host $id\n");
 							$numfailing++;
 						}
 						else
 						{
-							wm_debug("CactiTHold ReadData: Seen threshold $desc OK ($v) for host $id\n");
+							debug("CactiTHold ReadData: Seen threshold $desc OK ($v) for host $id\n");
 						}
 					}
 				}
 				else
 				{
-					wm_debug("CactiTHold ReadData: Failed to get thold info for host $id\n");
+					debug("CactiTHold ReadData: Failed to get thold info for host $id\n");
 				}
 				
-				wm_debug("CactiTHold ReadData: Checked $numthresh and found $numfailing failing\n");
+				debug("CactiTHold ReadData: Checked $numthresh and found $numfailing failing\n");
 				
 				if( ($numfailing > 0) && ($numthresh > 0) && ($state==3) )
 				{
@@ -215,18 +205,18 @@ $thold_present = false;
 					$item->add_note("thold_failpercent",($numfailing/$numthresh)*100);
 					$data[IN] = $state;
 					$data[OUT] = $numfailing;
-					wm_debug("CactiTHold ReadData: State is $state/$statename\n");
+					debug("CactiTHold ReadData: State is $state/$statename\n");
 				}
 				elseif( $numthresh>0 )
 				{
 					$item->add_note("thold_failcount",0);
 					$item->add_note("thold_failpercent",0);
-					wm_debug("CactiTHold ReadData: Leaving state as $state\n");
+					debug("CactiTHold ReadData: Leaving state as $state\n");
 				}
 			}		
 		}
 
-		wm_debug ("CactiTHold ReadData: Returning (".($data[IN]===NULL?'NULL':$data[IN]).",".($data[OUT]===NULL?'NULL':$data[OUT]).",$data_time)\n");
+		debug ("CactiTHold ReadData: Returning (".($data[IN]===NULL?'NULL':$data[IN]).",".($data[OUT]===NULL?'NULL':$data[IN]).",$data_time)\n");
 
 		return( array($data[IN], $data[OUT], $data_time) );
 	}
@@ -234,3 +224,4 @@ $thold_present = false;
 
 
 // vim:ts=4:sw=4:
+?>

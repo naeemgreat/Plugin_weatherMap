@@ -1,31 +1,32 @@
-#!/usr/bin/php
+#!/usr/local/bin/php
 <?php
 
-// PHP Weathermap 0.98a
-// Copyright Howard Jones, 2005-2019 howie@thingy.com
+// PHP Weathermap 0.95b
+// Copyright Howard Jones, 2005-2008 howie@thingy.com
 // http://www.network-weathermap.com/
-// Released under the MIT License
+// Released under the GNU Public License
 require_once 'Console/Getopt.php';
 
-require_once "lib/Weathermap.class.php";
+require_once "Weathermap.class.php";
 
-if (!wm_module_checks()) { die ("Quitting: Module checks failed.\n"); }
+if (!module_checks()) { die ("Quitting: Module checks failed.\n"); }
 
-//    $weathermap_debugging=TRUE; 
+//    $weathermap_debugging=TRUE; // XXX - This needs to come out again!
+
+
 
 $output="html";
 $configfile="weathermap.conf";
 $htmlfile='';
 $imagefile='';
 $dumpafter=0;
-$dumpstats=0;
 $randomdata=0;
 $dumpconfig='';
 $defines=array();
 
 // **************************************************************************************
 // THIS IS THE ONE LINE IN HERE YOU MIGHT HAVE TO CHANGE!
-$rrdtool="/usr/bin/rrdtool";
+$rrdtool="/usr/local/bin/rrdtool";
 // (on Windows, use / instead of \ in pathnames - c:/rrdtool/bin/rrdtool.exe for example)
 // **************************************************************************************
 
@@ -41,10 +42,8 @@ $long_opts=array
 		"output=",
 		"debug",
 		"uberdebug",
-		"stats",
 		"define=",
 		"no-data",
-		"no-warn=",
 		"randomdata",
 		"htmloutput=",
 		"dumpafter",
@@ -57,8 +56,7 @@ $args=$cg->readPHPArgv();
 
 $ret=$cg->getopt($args, $short_opts, $long_opts);
 
-$pear = new PEAR;
-if ($pear->isError($ret)) { die ("Error in command line: " . $ret->getMessage() . "\n (try --help)\n"); }
+if (PEAR::isError($ret)) { die ("Error in command line: " . $ret->getMessage() . "\n (try --help)\n"); }
 
 $gopts=$ret[0];
 
@@ -71,7 +69,7 @@ if (sizeof($gopts) > 0)
 		switch ($o[0])
 		{
 		case '--config':
-			$configfile=$o[1];			
+			$configfile=$o[1];
 			break;
 
 		case '--htmloutput':
@@ -89,23 +87,11 @@ if (sizeof($gopts) > 0)
 
 		case '--dumpconfig':
 			//$map->dumpconfig=$o[1];
-			// $options_output['dumpconfig'] = $o[1];
-			$dumpconfig=$o[1];
+			$options_output['dumpconfig'] = $o[1];
 			break;
 
 		case '--randomdata':
 			$randomdata=1;
-			break;
-
-		case '--stats':
-			$dumpstats=1;
-			break;
-		case '--no-warn':
-			// allow disabling of warnings from the command-line, too (mainly for the rrdtool warning)
-			$suppress_warnings = explode(",", $o[1]);
-			foreach ($suppress_warnings as $s) {
-				$weathermap_error_suppress[] = strtoupper($s);
-			}
 			break;
 
 		case '--uberdebug':
@@ -143,18 +129,11 @@ if (sizeof($gopts) > 0)
 			
         case '--define':
             preg_match("/^([^=]+)=(.*)\s*$/",$o[1],$matches);
-			if(isset($matches[2]))
-			{
-	            $varname = $matches[1];
-	            $value = $matches[2];
-				wm_debug(">> $varname = '$value'\n");
-	            // save this for later, so that when the map object exists, it can be defined
-	            $defines[$varname]=$value;
-			}
-			else
-			{
-				print "WARNING: --define format is:  --define name=value\n";
-			}            
+            $varname = $matches[1];
+            $value = $matches[2];
+            debug(">> $varname = '$value'\n");
+            // save this for later, so that when the map object exists, it can be defined
+            $defines[$varname]=$value;
             break;
 
 		case '--version': 
@@ -164,7 +143,7 @@ if (sizeof($gopts) > 0)
 
 		case '--help':
                         print 'PHP Network Weathermap v' . $WEATHERMAP_VERSION."\n";
-                        print "Copyright Howard Jones, 2005-2019 howie@thingy.com\nReleased under the MIT License\nhttp://www.network-weathermap.com/\n\n";
+                        print "Copyright Howard Jones, 2005-2007 howie@thingy.com\nReleased under the GNU Public License\nhttp://www.network-weathermap.com/\n\n";
 
 			print "Usage: php weathermap [options]\n\n";
                         
@@ -174,15 +153,11 @@ if (sizeof($gopts) > 0)
                         
                         print " --image-uri {uri}        -  URI to prefix <img> tags in HTML.\n";
                         print " --bulge                  -  Enable link-bulging mode. See manual.\n\n";
-						
-						print " --define name=value      -  Define internal variables\n";
-						print "                             (equivalent to global SET in config file)\n\n";
                         
                         print " --no-data                -  skip the data-reading process (just a 'grey' map)\n";
                         print " --randomdata            -  as above, but use random data\n";
                         print " --debug                  -  produce (LOTS) of debugging information during run\n";
-						print " --no-warn={errorcode}[,{errorcode}] - suppress warnings with listed errorcodes\n";
-						print " --dump-after             -  dump all internal PHP structures (HUGE)\n";
+                        print " --dump-after             -  dump all internal PHP structures (HUGE)\n";
                         print " --dumpconfig {filename}  -  filename to write a new config to (for testing)\n\n";
                         
                         print " --help                   -  show this help\n";
@@ -198,9 +173,9 @@ if (sizeof($gopts) > 0)
 if(isset($options_output['debugging']) && $options_output['debugging']) 
 {
 	$weathermap_debugging=TRUE;
-	wm_debug("------------------------------------\n");
-	wm_debug("Starting PHP-Weathermap run, with config: $configfile\n");
-	wm_debug("------------------------------------\n");
+	debug("------------------------------------\n");
+	debug("Starting PHP-Weathermap run, with config: $configfile\n");
+	debug("------------------------------------\n");
 }
 
 $map=new Weathermap;
@@ -211,8 +186,9 @@ $map->context="cli";
 foreach ($options_output as $key=>$value)
 {
 	$map->$key = $value;
-	// $map->add_hint($key,$value);
 }
+
+
 
 $weathermap_map = $configfile;
 
@@ -237,22 +213,13 @@ if ($map->ReadConfig($configfile))
     {
         $map->add_hint($hintname,$hint);
     }
-	
-	// now stuff in all the others, that we got from getopts
-	foreach ($options_output as $key=>$value)
-	{
-		// $map->$key = $value;
-		$map->add_hint($key,$value);
-	}
 
-        if ( (isset($options_output['sizedebug']) && ! $options_output['sizedebug']) || (!isset($options_output['sizedebug'])) )
+	if (!$map->sizedebug)
 	{
 		if ($randomdata == 1) { $map->RandomData(); }
 		else { $map->ReadData(); }
 	}
 
-	# exit();
-	
 	if ($imagefile != '')
 	{
 		$map->DrawMap($imagefile);
@@ -261,13 +228,12 @@ if ($map->ReadConfig($configfile))
 
 	if ($htmlfile != '')
 	{
-		wm_debug("Writing HTML to $htmlfile\n");
+		debug("Writing HTML to $htmlfile\n");
 		
 		$fd=fopen($htmlfile, 'w');
 		fwrite($fd,
-			'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head>');
-		if($map->htmlstylesheet != '') fwrite($fd,'<link rel="stylesheet" type="text/css" href="'.$map->htmlstylesheet.'" />');
-		fwrite($fd,'<meta http-equiv="refresh" content="300" /><title>' . $map->ProcessString($map->title, $map) . '</title></head><body>');
+			'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="refresh" content="300" /><title>' . $map->title
+			. '</title></head><body>');
 
 		if ($map->htmlstyle == "overlib")
 		{
@@ -279,32 +245,17 @@ if ($map->ReadConfig($configfile))
 
 		fwrite($fd, $map->MakeHTML());
 		fwrite($fd,
-			'<hr /><span id="byline">Network Map created with <a href="http://www.network-weathermap.com/?vs='
+			'<hr />Network Map created with <a href="http://www.network-weathermap.com/?vs='
 			. $WEATHERMAP_VERSION . '">PHP Network Weathermap v' . $WEATHERMAP_VERSION
-			. '</a></span></body></html>');
+			. '</a></body></html>');
 		fclose ($fd);
 	}
 
-	if ($dumpconfig != '')
-		$map->WriteConfig($dumpconfig);
-
-	if ($dumpstats != '')
-		$map->DumpStats();
-
-	if ($map->dataoutputfile != '') {
-		$map->WriteDataFile($map->dataoutputfile);
-	}
+	if ($map->dumpconfig != '')
+		$map->WriteConfig($map->dumpconfig);
 
 	if ($dumpafter == 1)
 		print_r ($map);
-		
-#	print_r ($map->node_template_tree);
-#	print_r ($map->link_template_tree);
-	
-	# $map->cachefolder="editcache";	
-	# $map->CacheUpdate(1);
-	
-		
 }
 else { die ("\n\nCould not read Weathermap config file. No output produced. Maybe try --help?\n"); }
 
@@ -321,3 +272,4 @@ function my_assert_handler($file, $line, $code)
 }
 
 // vim:ts=4:sw=4:
+?>
